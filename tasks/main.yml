@@ -1,2 +1,85 @@
----
-# tasks file for rocm-role
+#
+# Install ROCm using the package manager method
+#   https://docs.amd.com/bundle/ROCm-Installation-Guide-v5.4.3/page/How_to_Install_ROCm.html#d23e2091
+#
+# NOTE: The gpg key may change; ensure it is updated when installing a new release.
+#
+
+- name: Install Required Packages (Ubuntu 20.04)
+  apt: name={{ item }} state=present
+  with_items:
+  - wget
+  - gnupg2
+  - gawk
+  - curl
+
+- name: Install Kernel Headers
+  apt: name={{ item }} state=present
+  with_items:
+    - linux-headers-`uname -r` 
+    - linux-modules-extra-`uname -r`
+
+- name: Add ROCm apt repository
+  apt_key:
+    data: "{{ lookup('file', 'rocm.gpg.key') }}"
+    state: present
+
+- name: Add amdgpu Repository
+  apt_repository:
+    repo: deb [arch=amd64] https://repo.radeon.com/amdgpu/5.4.3/ubuntu focal main
+    state: present
+    filename: rocm
+
+- name: Install amdgpu-dkms package
+  apt: name={{ item }} state=latest update_cache=yes
+  with_items:
+  - amdgpu-dkms
+
+- name: Reboot the server
+  shell: "sleep 2 && reboot"
+  async: 1
+  poll: 0
+
+- name: Reboot
+  local_action: wait_for host={{ inventory_hostname }} port=22 delay=120 timeout=600
+  become: False
+
+- name: Add ROCm Repository
+  apt_repository:
+    repo: deb [arch=amd64] https://repo.radeon.com/rocm/5.4.3/ubuntu focal main
+    state: present
+    filename: rocm
+
+
+- name: Install rocm package
+  apt: name={{ item }} state=latest update_cache=yes
+  with_items:
+  - rocm
+
+#
+#  User Groups
+#
+
+- name: Add ubuntu user into video group
+  user: name=gitlab groups=video append=yes
+
+- name: Add users to video group automatically
+  lineinfile:
+    path: /etc/adduser.conf
+    regexp: '^ADD_EXTRA_GROUPS='
+    line: 'ADD_EXTRA_GROUPS=1'
+
+- name: Add users to video group automatically
+  lineinfile:
+    path: /etc/adduser.conf
+    regexp: '^EXTRA_GROUPS='
+    line: 'EXTRA_GROUPS=video'
+
+- name: Add ubuntu user into render group
+  user: name=gitlab groups=render append=yes
+
+- name: Add users to render group automatically
+  lineinfile:
+    path: /etc/adduser.conf
+    regexp: '^EXTRA_GROUPS='
+    line: 'EXTRA_GROUPS=render'
