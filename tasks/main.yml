@@ -1,3 +1,10 @@
+#
+# Install ROCm using the package manager method
+#   https://docs.amd.com/bundle/ROCm-Installation-Guide-v5.4.3/page/How_to_Install_ROCm.html#d23e2091
+#
+# NOTE: The gpg key may change; ensure it is updated when installing a new release.
+#
+
 - name: Install Required Packages (Ubuntu 20.04)
   apt: name={{ item }} state=present
   with_items:
